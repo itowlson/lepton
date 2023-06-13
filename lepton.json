@@ -1,0 +1,6 @@
+{
+    "apps": [
+        { "reference": "ghcr.io/itowlson/dioxus-test:v1", "address": "127.0.0.1:4001", "state_dir": "dioxus1" },
+        { "reference": "ghcr.io/itowlson/dioxus-test:v2", "address": "127.0.0.1:4002", "state_dir": "dioxus2" }
+    ]
+}
