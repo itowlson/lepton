@@ -1,48 +1,21 @@
-mod manifest;
+use super::manifest::App;
 
-use std::{path::PathBuf};
-
-use clap::Parser;
-use manifest::App;
-
-use crate::manifest::Manifest;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    Lepton::parse().run().await
+pub struct RunningApp {
+    jh: tokio::task::JoinHandle<Result<Result<(), anyhow::Error>, futures::future::Aborted>>, //tokio::task::JoinHandle<anyhow::Result<()>>,
+    abort_handle: futures::future::AbortHandle,
 }
 
-#[derive(Parser)]
-struct Lepton {
-    #[clap(default_value = "lepton.json")]
-    source: PathBuf,
-}
+impl RunningApp {
+    pub fn abort(&self) {
+        self.abort_handle.abort();
+    }
 
-impl Lepton {
-    async fn run(&self) -> anyhow::Result<()> {
-        let manifest = Manifest::load_from(&self.source).await?;
-
-        let mut running_apps = vec![];
-
-        for app in &manifest.apps {
-            running_apps.push(run(app).await?);
-        }
-
-        let results = futures::future::join_all(running_apps).await;
-        for result in results {
-            if let Err(e) = &result {
-                eprintln!("{e:#}");
-            }
-            if let Ok(Err(e)) = &result {
-                eprintln!("{e:#}");
-            }
-        }
-
-        Ok(())
+    pub fn into_handle(self) -> tokio::task::JoinHandle<Result<Result<(), anyhow::Error>, futures::future::Aborted>> {
+        self.jh
     }
 }
 
-async fn run(app: &App) -> anyhow::Result<tokio::task::JoinHandle<anyhow::Result<()>>> {
+pub async fn run(app: &App) -> anyhow::Result<RunningApp> {
     let working_dir = tempfile::tempdir()?;
 
     let locked_app = prepare_app_from_oci(&app.reference, working_dir.path()).await?;
@@ -57,11 +30,14 @@ async fn run(app: &App) -> anyhow::Result<tokio::task::JoinHandle<anyhow::Result
         address: app.address.clone(), tls_cert: None, tls_key: None
     };
 
+    let run_fut = trigger.run(http_run_config);
+    let (abortable, abort_handle) = futures::future::abortable(run_fut);
+
     let jh = tokio::task::spawn(async move {
         let _wd = working_dir;
-        trigger.run(http_run_config).await
+        abortable.await
     });
-    Ok(jh)
+    Ok(RunningApp { jh, abort_handle })
 }
 
 // Copied and trimmed down from spin trigger
@@ -74,7 +50,7 @@ async fn build_executor(
     app: &App,
     loader: impl Loader + Send + Sync + 'static,
     locked_url: String,
-    init_data: crate::HostComponentInitData,
+    init_data: HostComponentInitData,
 ) -> Result<HttpTrigger> {
     let runtime_config = build_runtime_config(&app.state_dir)?;
 
