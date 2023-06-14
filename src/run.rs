@@ -1,6 +1,21 @@
 use super::manifest::App;
 
-pub async fn run(app: &App) -> anyhow::Result<tokio::task::JoinHandle<anyhow::Result<()>>> {
+pub struct RunningApp {
+    jh: tokio::task::JoinHandle<Result<Result<(), anyhow::Error>, futures::future::Aborted>>, //tokio::task::JoinHandle<anyhow::Result<()>>,
+    abort_handle: futures::future::AbortHandle,
+}
+
+impl RunningApp {
+    pub fn abort(&self) {
+        self.abort_handle.abort();
+    }
+
+    pub fn into_handle(self) -> tokio::task::JoinHandle<Result<Result<(), anyhow::Error>, futures::future::Aborted>> {
+        self.jh
+    }
+}
+
+pub async fn run(app: &App) -> anyhow::Result<RunningApp> {
     let working_dir = tempfile::tempdir()?;
 
     let locked_app = prepare_app_from_oci(&app.reference, working_dir.path()).await?;
@@ -15,11 +30,14 @@ pub async fn run(app: &App) -> anyhow::Result<tokio::task::JoinHandle<anyhow::Re
         address: app.address.clone(), tls_cert: None, tls_key: None
     };
 
+    let run_fut = trigger.run(http_run_config);
+    let (abortable, abort_handle) = futures::future::abortable(run_fut);
+
     let jh = tokio::task::spawn(async move {
         let _wd = working_dir;
-        trigger.run(http_run_config).await
+        abortable.await
     });
-    Ok(jh)
+    Ok(RunningApp { jh, abort_handle })
 }
 
 // Copied and trimmed down from spin trigger

@@ -61,6 +61,14 @@ impl TauonRunner {
             // event.kind is uninformative so let's do this the hard way
             let path = event.path;
             if path.is_file() {
+
+                if let Some(ra) = map.get(&path) {
+                    println!("{path:?} changed");
+                    ra.abort();  // Not a smooth handover, but we need to stop the old one before starting the new one because possible port clash. We do this before loading the new one because we don't want an old app hanging around when the file has been replaced.
+                } else {
+                    println!("{path:?} added");
+                }
+
                 let app = match manifest::App::load_from(&path).await {
                     Ok(a) => a,
                     Err(e) => {
@@ -68,37 +76,23 @@ impl TauonRunner {
                         continue;
                     }
                 };
-                match map.get(&path) {
-                    Some(jh) => {
-                        println!("{path:?} changed");
-                        jh.abort();  // Need to stop the old one before starting the new one because possible port clash
-                        match run::run(&app).await {
-                            Ok(jh) => { map.insert(path, jh); },
-                            Err(e) => eprintln!("ERROR! Failed to run app from {path:?}: {e:#}"),
-                        }
-                    },
-                    None => {
-                        println!("{path:?} added");
-                        match run::run(&app).await {
-                            Ok(jh) => { map.insert(path, jh); },
-                            Err(e) => eprintln!("ERROR! Failed to run app from {path:?}: {e:#}"),
-                        }
-                    }
+
+                match run::run(&app).await {
+                    Ok(jh) => { map.insert(path, jh); },
+                    Err(e) => eprintln!("ERROR! Failed to run app from {path:?}: {e:#}"),
                 }
+
             } else {
                 println!("{path:?} deleted");
-                let jh = map.remove(&path);
-                if let Some(jh) = jh {
-                    jh.abort();  // THIS DOESN'T WORK
+                if let Some(ra) = map.remove(&path) {
+                    ra.abort();
                 }
             }
         }
     }
 }
 
-type RunningApp = tokio::task::JoinHandle<anyhow::Result<()>>;
-
 struct TauonRunner {
     dir: PathBuf,
-    running_apps: RwLock<HashMap<PathBuf, RunningApp>>,  // option temp to save doing real things
+    running_apps: RwLock<HashMap<PathBuf, run::RunningApp>>,
 }
