@@ -15,3 +15,11 @@ To use it with your own apps:
 * `cargo run --release -- <YOUR_LEPTON_FILE>`
 
 NOTE: lepton relies on Spin for registry login.  If your registry packages are private, you must have run `spin registry login` before running lepton.  (Sorry. It's a demo.)
+
+## tauon aka 'big lepton'
+
+To try out:
+
+```
+cargo run --bin tauon --release
+```

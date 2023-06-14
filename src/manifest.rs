@@ -41,6 +41,13 @@ impl Manifest {
 }
 
 impl App {
+    pub async fn load_from(path: &Path) -> anyhow::Result<Self> {
+        let json = tokio::fs::read_to_string(path).await
+            .with_context(|| format!("Failed to read file {}", path.display()))?;
+        let raw: RawApp = serde_json::from_str(&json)?;
+        Self::from_raw(raw)
+    }
+
     fn from_raw(raw: RawApp) -> anyhow::Result<Self> {
         Ok(Self {
             reference: raw.reference,
