@@ -19,3 +19,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.23", features = ["full"] }
 url = "2.4.0"
 futures = "0.3.28"
+
+[[bin]]
+name = "lepton"
+path = "src/lepton.rs"
