@@ -38,6 +38,25 @@ impl TauonRunner {
     async fn run(&self) -> anyhow::Result<()> {
         tokio::fs::create_dir_all(&self.dir).await?;
 
+        if let Ok(reader) = std::fs::read_dir(&self.dir) {
+            let mut map = self.running_apps.write().await;
+
+            for rde in reader {
+                if let Ok(de) = rde {
+                    let path = de.path().canonicalize()?;
+                    println!("{path:?} found");
+
+                    match run_from_path(&path, &mut map).await {
+                        Ok(()) => (),
+                        Err(e) => {
+                            eprintln!("ERROR: {e:#}");
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
         let timeout = std::time::Duration::from_millis(WATCH_DEBOUNCE_MS);
         let (tx, rx) = std::sync::mpsc::channel();
 
@@ -69,27 +88,35 @@ impl TauonRunner {
                     println!("{path:?} added");
                 }
 
-                let app = match manifest::App::load_from(&path).await {
-                    Ok(a) => a,
+                match run_from_path(&path, &mut map).await {
+                    Ok(()) => (),
                     Err(e) => {
-                        eprintln!("ERROR! Failed to load app from {path:?}: {e:#}");
+                        eprintln!("ERROR: {e:#}");
                         continue;
                     }
-                };
-
-                match run::run(&app).await {
-                    Ok(jh) => { map.insert(path, jh); },
-                    Err(e) => eprintln!("ERROR! Failed to run app from {path:?}: {e:#}"),
                 }
 
             } else {
                 println!("{path:?} deleted");
                 if let Some(ra) = map.remove(&path) {
                     ra.abort();
+                } else {
+                    eprintln!("expected to file a corresponding app but didn't");
                 }
             }
         }
     }
+}
+
+async fn run_from_path(path: &Path, map: &mut HashMap<PathBuf, run::RunningApp>) -> anyhow::Result<()> {
+    use anyhow::Context;
+
+    let app = manifest::App::load_from(&path).await
+        .with_context(|| format!("Failed to load app from {path:?}"))?;
+    let ra = run::run(&app).await
+        .with_context(|| format!("ERROR! Failed to run app from {path:?}"))?;
+    map.insert(path.to_owned(), ra);
+    Ok(())
 }
 
 struct TauonRunner {
