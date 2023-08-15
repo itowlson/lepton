@@ -1,0 +1,1 @@
+{ "reference": "ghcr.io/itowlson/timer-app-example:v1", "address": "1.2.3.4:5555", "state_dir": "timer" }

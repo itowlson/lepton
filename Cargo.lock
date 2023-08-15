@@ -2180,6 +2180,7 @@ dependencies = [
  "spin-trigger-http",
  "tempfile",
  "tokio",
+ "trigger-timer",
  "url",
 ]
 
@@ -4684,6 +4685,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-scoped"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4beb8ba13bc53ac53ce1d52b42f02e5d8060f0f42138862869beb769722b256"
+dependencies = [
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "tokio-stream"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4794,6 +4805,22 @@ checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
 dependencies = [
  "pin-project",
  "tracing",
+]
+
+[[package]]
+name = "trigger-timer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.25",
+ "futures",
+ "serde",
+ "spin-app",
+ "spin-core",
+ "spin-trigger",
+ "tokio",
+ "tokio-scoped",
+ "wasmtime",
 ]
 
 [[package]]
