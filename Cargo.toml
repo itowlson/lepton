@@ -9,11 +9,11 @@ anyhow = "1.0"
 clap = { version = "4.3.3", features = [ "derive" ] }
 futures = "0.3.28"
 notify-debouncer-mini = { version = "0.3.0", default-features = false }
-spin-app = { git = "https://github.com/fermyon/spin", tag = "v1.3.0" }
-spin-core = { git = "https://github.com/fermyon/spin", tag = "v1.3.0" }
-spin-oci = { git = "https://github.com/fermyon/spin", tag = "v1.3.0" }
-spin-trigger = { git = "https://github.com/fermyon/spin", tag = "v1.3.0" }
-spin-trigger-http = { git = "https://github.com/fermyon/spin", tag = "v1.3.0" }
+spin-app = { git = "https://github.com/fermyon/spin", tag = "v1.5.0" }
+spin-core = { git = "https://github.com/fermyon/spin", tag = "v1.5.0" }
+spin-oci = { git = "https://github.com/fermyon/spin", tag = "v1.5.0" }
+spin-trigger = { git = "https://github.com/fermyon/spin", tag = "v1.5.0" }
+spin-trigger-http = { git = "https://github.com/fermyon/spin", tag = "v1.5.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.82"
 tempfile = "3.3.0"
@@ -27,3 +27,6 @@ path = "src/lepton.rs"
 [[bin]]
 name = "tauon"
 path = "src/tauon.rs"
+
+[patch.'https://github.com/fermyon/spin']
+spin-llm = { path = "llm-stub" }

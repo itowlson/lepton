@@ -40,6 +40,20 @@ pub async fn run(app: &App) -> anyhow::Result<RunningApp> {
     Ok(RunningApp { jh, abort_handle })
 }
 
+struct PipeOutputToStdio;
+
+impl spin_trigger::TriggerHooks for PipeOutputToStdio {
+    fn component_store_builder(
+        &self,
+        _component: &spin_app::AppComponent,
+        builder: &mut spin_core::StoreBuilder,
+    ) -> Result<()> {
+        builder.inherit_stdout();
+        builder.inherit_stderr();
+        Ok(())
+    }
+}
+
 // Copied and trimmed down from spin trigger
 
 use spin_app::Loader;
@@ -55,7 +69,9 @@ async fn build_executor(
     let runtime_config = build_runtime_config(&app.state_dir)?;
 
     let mut builder = TriggerExecutorBuilder::new(loader);
-    builder.wasmtime_config_mut().cache_config_load_default()?;
+    // builder.config_mut().wasmtime_config().cache_config_load_default()?;
+
+    builder.hooks(PipeOutputToStdio);
 
     builder.build(locked_url, runtime_config, init_data).await
 }
